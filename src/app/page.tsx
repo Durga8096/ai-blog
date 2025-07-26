@@ -7,63 +7,154 @@ import BlogCard from './components/blogCard';
 import { BlogForm } from './components/blogForm';
 import { SearchBar } from './components/searchBar';
 import { Blog } from './type';
+import { s } from 'framer-motion/client';
 
 export default function HomePage() {
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [search, setSearch] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [mounted, setMounted] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
+  const [totalBlogs, setTotalBlogs] = useState<number>(0);
 
-  // Load blogs from localStorage on mount
+  // Load blogs from API on mount
   useEffect(() => {
     setMounted(true);
-    try {
-      const savedBlogs = JSON.parse(localStorage.getItem('blogs') || '[]');
-      setBlogs(savedBlogs);
-    } catch (error) {
-      console.error('Error loading blogs:', error);
-    }
+    fetchBlogs();
   }, []);
 
-  // Save blogs to localStorage whenever blogs change
-  useEffect(() => {
-    if (mounted) {
-      localStorage.setItem('blogs', JSON.stringify(blogs));
-    }
-  }, [blogs, mounted]);
-
-  const handleGenerate = async (topic: string) => {
-    setLoading(true);
+  // Fetch blogs from API with optional search
+  const fetchBlogs = async (searchQuery?: string) => {
     try {
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        body: JSON.stringify({ topic }),
-        headers: { 'Content-Type': 'application/json' },
-      });
+      let url = '/api/blogs';
+      const params = new URLSearchParams();
       
-      if (!res.ok) {
-        throw new Error('Failed to generate blog');
+      if (searchQuery && searchQuery.trim()) {
+        params.append('search', searchQuery.trim());
       }
       
-      const newBlog: Blog = await res.json();
-      newBlog.createdAt = new Date().toISOString();
+      if (params.toString()) {
+        url += `?${params.toString()}`;
+      }
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch blogs');
+      }
+      
+      const data = await response.json();
+      setBlogs(data.blogs || []);
+      setTotalBlogs(data.totalBlogs || 0);
+      setError('');
+    } catch (error) {
+      console.error('Error fetching blogs:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load blog posts');
+      setBlogs([]);
+    }
+  };
+
+  // Handle search with debouncing
+  useEffect(() => {
+    if (!mounted) return;
+    
+    const debounceTimer = setTimeout(() => {
+      if (search.trim()) {
+        fetchBlogs(search);
+      } else {
+        fetchBlogs();
+      }
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [search, mounted]);
+
+  // Generate new blog post using AI
+  const handleGenerate = async (topic: string) => {
+    setLoading(true);
+    setError('');
+    
+    try {
+      const response = await fetch('/api/blogs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ topic }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate blog');
+      }
+      
+      const newBlog: Blog = await response.json();
+      
       setBlogs((prev) => [newBlog, ...prev]);
+      setTotalBlogs((prev) => prev + 1);
+      
+      if (search) {
+        setSearch('');
+      }
+      
     } catch (error) {
       console.error('Error generating blog:', error);
-      // You might want to show an error toast here
+      setError(error instanceof Error ? error.message : 'Failed to generate blog post');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = (id: string) => {
-    setBlogs((prev) => prev.filter((b) => b.id !== id));
+  // Delete a specific blog post
+  const handleDelete = async (id: string) => {
+    try {
+      const response = await fetch(`/api/blogs?id=${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete blog');
+      }
+      
+      
+      setBlogs((prev) => prev.filter((blog) => blog.id !== id));
+      setTotalBlogs((prev) => prev - 1);
+      
+     setError('Blog post deleted successfully');
+      const successTimer = setTimeout(() => {
+        setError('');
+      }, 3000);
+      
+      return () => clearTimeout(successTimer);
+      
+    } catch (error) {
+      console.error('Error deleting blog:', error);
+      setError(error instanceof Error ? error.message : 'Failed to delete blog post');
+    }
   };
 
-  const filteredBlogs = blogs.filter((b) => 
-    b?.title?.toLowerCase().includes(search.toLowerCase()) ||
-    b?.content?.toLowerCase().includes(search.toLowerCase())
-  );
+  
+  useEffect(() => {
+    if (error && !error.includes('delete')) {
+      const timer = setTimeout(() => {
+        setError('');
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
+ 
+  const filteredCount = blogs.length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
@@ -75,8 +166,10 @@ export default function HomePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <div className="text-6xl mb-6"><Image src="/logo-2.png" alt="Logo" width={280} height={280} className="mx-auto" /></div>
-            <p className="text-2xl mb-8 text-[#e6eefa] ">
+            <div className="text-6xl mb-6">
+              <Image src="/logo-2.png" alt="Logo" width={280} height={280} className="mx-auto" />
+            </div>
+            <p className="text-2xl mb-8 text-[#e6eefa]">
               Transform any topic into engaging, well-structured blog posts using the power of AI
             </p>
           </motion.div>
@@ -84,6 +177,25 @@ export default function HomePage() {
       </div>
 
       <main className="max-w-4xl mx-auto px-6 py-12 space-y-8">
+        {/* Error Display */}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="bg-red-50 border border-red-200 rounded-2xl p-4 text-center"
+            >
+              <div className="flex items-center justify-center space-x-2">
+                <svg className="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-red-700 font-medium">{error}</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Blog Generation Form */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -130,8 +242,8 @@ export default function HomePage() {
 
         {/* Blog Posts Section */}
         <section className="space-y-6">
-          {/* Section Header */}
-          {blogs.length > 0 && (
+        
+          {totalBlogs > 0 && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -142,13 +254,21 @@ export default function HomePage() {
                 Your Blog Posts
               </h2>
               <div className="bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium">
-                {filteredBlogs.length} {filteredBlogs.length === 1 ? 'post' : 'posts'}
+                {search ? (
+                  <>
+                    {filteredCount} of {totalBlogs} {totalBlogs === 1 ? 'post' : 'posts'}
+                  </>
+                ) : (
+                  <>
+                    {totalBlogs} {totalBlogs === 1 ? 'post' : 'posts'}
+                  </>
+                )}
               </div>
             </motion.div>
           )}
 
-          {/* Empty State */}
-          {!loading && blogs.length === 0 && (
+          
+          {!loading && totalBlogs === 0 && !search && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -166,17 +286,24 @@ export default function HomePage() {
                 <h4 className="font-semibold text-gray-800 mb-2">💡 Try these topics:</h4>
                 <div className="flex flex-wrap gap-2 justify-center">
                   {['Machine Learning', 'Web Development', 'Digital Marketing', 'Health & Fitness'].map((topic) => (
-                    <span key={topic} className="bg-white px-3 py-1 rounded-full text-sm text-gray-600 border">
+                    <button
+                      key={topic}
+                      onClick={() => handleGenerate(topic)}
+                      disabled={loading}
+                      className="bg-white px-3 py-1 rounded-full text-sm text-gray-600 border 
+                               hover:bg-gray-50 hover:border-blue-300 transition-colors
+                               disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
                       {topic}
-                    </span>
+                    </button>
                   ))}
                 </div>
               </div>
             </motion.div>
           )}
 
-          {/* No Search Results */}
-          {!loading && blogs.length > 0 && filteredBlogs.length === 0 && (
+          {/* No Results Found */}
+          {!loading && totalBlogs > 0 && filteredCount === 0 && search && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -184,17 +311,23 @@ export default function HomePage() {
             >
               <div className="text-4xl mb-4">🔍</div>
               <h3 className="text-xl font-bold text-gray-800 mb-2">
-                No posts found
+                No posts found for "{search}"
               </h3>
-              <p className="text-gray-600">
+              <p className="text-gray-600 mb-4">
                 Try adjusting your search terms or generate new content
               </p>
+              <button
+                onClick={() => setSearch('')}
+                className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
+              >
+                Clear search
+              </button>
             </motion.div>
           )}
 
           {/* Blog Posts List */}
           <AnimatePresence mode="popLayout">
-            {filteredBlogs.map((blog, index) => (
+            {blogs.map((blog, index) => (
               <motion.div
                 key={blog.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -212,8 +345,7 @@ export default function HomePage() {
           </AnimatePresence>
         </section>
 
-        {/* Footer */}
-        {blogs.length > 0 && (
+        {totalBlogs > 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
