@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+#  Aithor - An AI Blog Generator
 
-## Getting Started
+An intelligent blog writing assistant that generates professional, structured blog posts using **Gemini AI**, built with **Next.js 14**, **Tailwind CSS**, and **TypeScript**.
 
-First, run the development server:
+---
+
+## 🚀 Features
+
+- ✅ Generate blog posts using Gemini AI
+- ✅ View all blog posts in a clean feed layout
+- ✅ Delete blog posts
+- ✅ Search/filter posts by topic (handled via backend)
+- ✅ Stylish UI with smooth UX using Tailwind & Typography plugin
+- ✅ In-memory backend — no database needed
+- 
+
+---
+
+##  Tech Stack
+
+| Layer           | Tech                         |
+|----------------|------------------------------|
+| Frontend        | React, Next.js App Router (v14), TypeScript |
+| Styling         | Tailwind CSS, @tailwindcss/typography       |
+| Backend         | Next.js API Route Handlers (`app/api`)      |
+| AI Integration  | Gemini 1.5 Flash (via Google Generative AI SDK) |
+| Testing         | Vitest + Supertest          |
+| Deployment      | Vercel                       |
+
+---
+
+## 🛠️ Setup Instructions
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+# 1. Clone the repo
+git clone https://github.com/Durga8096/ai-blog
+cd ai-blog-generator
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+# 2. Install dependencies
+npm install
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# 3. Create .env
+touch .env
