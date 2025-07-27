@@ -353,7 +353,7 @@ export default function HomePage() {
             className="text-center py-8 border-t border-gray-200"
           >
             <p className="text-gray-500 text-sm">
-              ✨ Powered by AI • Generated with care • Ready to inspire
+              ✨ Powered by AI • Generated with care • Ready to inspire • Always learning 🌟
             </p>
           </motion.div>
         )}
