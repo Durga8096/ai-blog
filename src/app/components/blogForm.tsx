@@ -28,7 +28,7 @@ export function BlogForm({ onGenerate }: { onGenerate: (topic: string) => void }
         type="submit"
         className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition-colors text-sm"
       >
-        Generate
+        Generate Blog
       </button>
     </form>
   );
